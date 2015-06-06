@@ -28,6 +28,9 @@ class CategoriesController extends Controller
         ];
     }
 
+    public $_category_arr;
+    public $ids = array();
+
     /**
      * Lists all Categories models.
      * @return mixed
@@ -66,15 +69,14 @@ class CategoriesController extends Controller
 
         $res = $model->find()->all();
 
-        foreach($res as $one){
-            $cats_ID[$one->id]['title'] = $one->title;
-            $cats_ID[$one->id]['id'] = $one->id;
-            $cats[$one->paret_id][$one->id]['title'] =  $one->title;
-            $cats[$one->paret_id][$one->id]['id'] =  $one->id;
+
+        foreach ($res as $value) {
+            $cats[$value->paret_id][] = $value;
         }
+        $this->_category_arr = $cats;
        //$cats = $this->getCatsTree($cats,0);
-        $cats = $this->build_tree($cats,0);
-        //Func::d($cats);
+        $cats = $this->outTree(0,0);
+        Func::d($this->ids);
 
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
             return $this->redirect(['view', 'id' => $model->id]);
@@ -86,48 +88,24 @@ class CategoriesController extends Controller
         }
     }
 
-    public  function build_tree($cats,$parent_id,$only_parent = false){
-        if(is_array($cats) and isset($cats[$parent_id])){
-            $tree = '<ul>';
-            if($only_parent==false){
-                foreach($cats[$parent_id] as $cat){
-                    $tree .= '<li><a href="'.Url::toRoute(['posts/test','id'=> $cat['id']]).'">'.$cat['title'].'</a>';
-                    $tree .=  $this->build_tree($cats,$cat['id']);
-                    $tree .= '</li>';
-                }
-            }elseif(is_numeric($only_parent)){
-                $cat = $cats[$parent_id][$only_parent];
-                $tree .= '<li><a href="'.Url::toRoute(['posts/posts','id'=> $cat['id']]).'">'.$cat['title'].' #'.$cat['id'].'</a>';
-                $tree .=  $this->build_tree($cats,$cat['id']);
-                $tree .= '</li>';
+
+    public function outTree($parent_id, $level) {
+        if (isset($this->_category_arr[$parent_id])) {
+            foreach ($this->_category_arr[$parent_id] as $value) {
+
+                echo "<li>";
+                echo "<div style='margin-left:" . ($level * 25) . "px;'>" . $value->title . "</div>";
+                $this->ids[] = $value->id;
+
+                $level++;
+                echo "<ul>";
+                $this->outTree($value->id, $level);
+                echo "</ul>";
+                $level--;
+                echo "</li>";
             }
-            $tree .= '</ul>';
+
         }
-        else return null;
-        return $tree;
-    }
-
-    public function getCatsTree($cats,$parent_id=0,$only_parent = false){
-        if(is_array($cats) and isset($cats[$parent_id])){
-
-            if($only_parent==false){
-                $i = 0;
-
-                foreach($cats[$parent_id] as $cat){
-                    $tree[$i] = $cat;
-
-                    $tree[$i][] =  $this->getCatsTree($cats,$cat['id']);
-                    $i++;
-                }
-
-
-            }elseif(is_numeric($only_parent)){
-                $cat = $cats[$parent_id][$only_parent];
-                $tree[$cat['id']] = $cat;
-                $tree[$cat['id']] =  $this->getCatsTree($cats,$cat['id']);
-            }
-        }else return null;
-        return $tree;
     }
     /**
      * Updates an existing Categories model.
